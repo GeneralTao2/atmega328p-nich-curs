@@ -17,14 +17,18 @@
 
 extern Led_TypeDef led1;
 
-#define TEXT_BLINKING_COUNT 200
+#define TEXT_BLINKING_COUNT 40
 static uint8_t textBlinkingCounter = 0;
 extern volatile uint8_t textBlinkingFlag;
 
-#define  LCD_PRINTING_COUNT 100
+#define  LCD_PRINTING_COUNT 20
 static uint8_t LCDPrintingCounter = 0;
 extern volatile uint8_t LCDPrintingFlag;
 
+extern Button_TypeDef buttonMenu;
 extern Button_TypeDef buttonLeft;
+extern Button_TypeDef buttonRight;
+extern Button_TypeDef buttonUp;
+extern Button_TypeDef buttonDown;
 
 #endif /* INTERRUPTS_H_ */

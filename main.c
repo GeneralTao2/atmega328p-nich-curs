@@ -17,21 +17,51 @@ More information at www.aeq-web.com
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <avr/eeprom.h>
+
+
+volatile uint8_t counter1 = 0;
+
 typedef enum DivaceMode_TypeDef {
-	MAIN,
+	MAIN = 0,
 	OPTIONS,
 	SENSOR
 } DivaceMode_TypeDef;
 
-struct Indexes {
-	volatile uint8_t currentRoom : 2;
-	volatile uint8_t curentOption : 1;
-	volatile uint8_t test;
-} indexes;
+volatile DivaceMode_TypeDef currentMode = MAIN;
+
+volatile uint8_t currentRoom = 0;
+void CurrentRoomNext() {
+	if(currentRoom == 0) {
+		currentRoom = 1;
+	} else if(currentRoom == 4) {
+		currentRoom = 1;
+	} else {
+		currentRoom++;
+	}
+
+}
+void CurrentRoomPrev() {
+	if(currentRoom == 0) {
+		currentRoom = 4;
+	} else if(currentRoom == 1) {
+		currentRoom = 4;
+		} else {
+		currentRoom--;
+	}
+}
+
+volatile uint8_t currentOption = 0;
+void CurrentOptionToggle() {
+	currentOption = !currentOption;
+}
+
+
+
 
 #define ROOM_COUNT 4
 Room_TypeDef rooms[ROOM_COUNT];
-Led_TypeDef led1;
+Led_TypeDef leds[ROOM_COUNT];
 Led_TypeDef led_debug;
 
 Button_TypeDef buttonLeft;
@@ -42,7 +72,7 @@ Button_TypeDef buttonMenu;
 
 Temperature ds_t[ROOM_COUNT];
 char spaces[4] = "   ";
-volatile DivaceMode_TypeDef currentMode = SENSOR;
+
 void init_divaces(void);
 void print_main(void);
 void print_options(void);
@@ -55,7 +85,87 @@ volatile uint8_t LCDPrintingFlag = 0;
 uint8_t LCDPrintingLastFlag = 0;
 uint8_t counter = 0;
 
+uint8_t templateDrowingMode = 1;
 
+void onClickMenuButton() {
+	if(currentMode == MAIN) {
+		templateDrowingMode = 1;
+		currentRoom = 0;
+		currentMode = OPTIONS;
+	} else if(currentMode == SENSOR) {
+		Room_TempSaveToEEPROM(&rooms[currentRoom-1], currentRoom-1);
+		templateDrowingMode = 1;
+		currentMode = OPTIONS;
+	} else if(currentMode == OPTIONS) {
+		templateDrowingMode = 1;
+		currentMode = MAIN;
+	}
+}
+
+void onClickLeftButton() {
+	if(currentMode == OPTIONS) {
+		currentMode = SENSOR;
+		templateDrowingMode = 1;
+		currentOption = 0;
+	}
+	CurrentOptionToggle();
+}
+
+void onClickRightButton() {
+	if(currentMode == OPTIONS) {
+		currentMode = SENSOR;
+		templateDrowingMode = 1;
+		currentOption = 0;
+	}
+}
+
+void onClickUpButton() {
+	if(currentMode == OPTIONS) {
+		CurrentRoomNext();
+		templateDrowingMode = 1;
+	}
+	if(currentMode == SENSOR) {
+		if(currentOption) {
+			Room_minTempUp(&rooms[currentRoom-1]);
+		} else {
+			Room_maxTempUp(&rooms[currentRoom-1]);
+		}
+	}
+	counter1++;
+}
+
+void onClickDownButton() {
+	if(currentMode == OPTIONS) {
+		CurrentRoomPrev();
+		templateDrowingMode = 1;
+	}
+	if(currentMode == SENSOR) {
+		if(currentOption) {
+			Room_minTempDown(&rooms[currentRoom-1]);
+		} else {
+			Room_maxTempDown(&rooms[currentRoom-1]);
+		}
+	}
+}
+
+void Rooms_InitFromEEROM(void) {
+	for(uint8_t i=0; i<4; i++) {
+		Room_TempInitFromEEPROM(&rooms[i], i);
+	}
+}
+
+
+
+void CompareTemeperatures() {
+	for(uint8_t i=0; i<ROOM_COUNT; i++) {
+		if(ds_t[i].digit < rooms[i].min_temp) {
+			LedOn(&leds[i]);
+		}
+		if(ds_t[i].digit > rooms[i].max_temp) {
+			LedOff(&leds[i]);
+		}
+	}
+}
 
 int main()
 {
@@ -71,26 +181,26 @@ int main()
 	Button_init(&buttonDown);
 	Button_init(&buttonMenu);
 	
-	LedEnable(&led1);
+	for(uint8_t i=0; i<ROOM_COUNT; i++) {
+		LedEnable(&leds[i]);
+	}
 	LedEnable(&led_debug);
 	LCD_Init(); //Activate LCD
 	
-	indexes.currentRoom = 0;
-	indexes.test = 0;
-	uint8_t a;
 	sei();
-	LCD_Printf("Hello!");
 	
+	eeprom_write_byte(0x01, 68);
+	uint8_t a = eeprom_read_byte(0x01);
+	LCD_Printf("Hello, %d!", a);
+	Rooms_InitFromEEROM();
 	while(1) {
-		//_delay_ms(1000);
 		if(LCDPrintingFlag != LCDPrintingLastFlag) {
-			//indexes.test++;
 			LedToggle(&led_debug);
-			a++;
-			/*for(uint8_t i=0; i<ROOM_COUNT; i++) {
+			for(uint8_t i=0; i<ROOM_COUNT; i++) {
 				_delay_ms(10);
 				ds_t[i] = DS18B20_read_temperature(&rooms[i].ds);
-			}*/
+			}
+			CompareTemeperatures();
 			switch(currentMode) {
 				case MAIN:
 				print_main();
@@ -129,9 +239,21 @@ void init_divaces(void) {
 	rooms[3].ds.PINx = &PINC;
 	rooms[3].ds.PORTxx = PORTC3;
 	
-	led1.DDRx = &DDRD;
-	led1.PORTx = &PORTD;
-	led1.PORTxx = PORTD2;
+	leds[0].DDRx = &DDRD;
+	leds[0].PORTx = &PORTD;
+	leds[0].PORTxx = PORTD2;
+	
+	leds[1].DDRx = &DDRD;
+	leds[1].PORTx = &PORTD;
+	leds[1].PORTxx = PORTD3;
+	
+	leds[2].DDRx = &DDRC;
+	leds[2].PORTx = &PORTC;
+	leds[2].PORTxx = PORTC4;
+	
+	leds[3].DDRx = &DDRC;
+	leds[3].PORTx = &PORTC;
+	leds[3].PORTxx = PORTC5;
 	
 	led_debug.DDRx = &DDRB;
 	led_debug.PORTx = &PORTB;
@@ -141,72 +263,102 @@ void init_divaces(void) {
 	buttonLeft.PCMSKx = &PCMSK0;
 	buttonLeft.PORTx = &PORTB;
 	buttonLeft.PORTxx = PORTB0;
+	buttonLeft.onClick = onClickLeftButton;
 	
 	buttonUp.PCIEx = PCIE0;
 	buttonUp.PCMSKx = &PCMSK0;
 	buttonUp.PORTx = &PORTB;
 	buttonUp.PORTxx = PORTB1;
+	buttonUp.onClick = onClickUpButton;
 	
 	buttonMenu.PCIEx = PCIE0;
 	buttonMenu.PCMSKx = &PCMSK0;
 	buttonMenu.PORTx = &PORTB;
 	buttonMenu.PORTxx = PORTB2;
+	buttonMenu.onClick = onClickMenuButton;
 	
 	buttonDown.PCIEx = PCIE0;
 	buttonDown.PCMSKx = &PCMSK0;
 	buttonDown.PORTx = &PORTB;
 	buttonDown.PORTxx = PORTB3;
+	buttonDown.onClick = onClickDownButton;
 	
 	buttonRight.PCIEx = PCIE0;
 	buttonRight.PCMSKx = &PCMSK0;
 	buttonRight.PORTx = &PORTB;
 	buttonRight.PORTxx = PORTB4;
+	buttonRight.onClick = onClickRightButton;
 }
 void print_main(void) {
-	LCD_Action(0x01);
-	getSapces(spaces, ds_t[0].digit);
-	LCD_Printf("1:% d.%01u%s2:% d.%01u", ds_t[0].digit, ds_t[0].decimal, 
-										   spaces,
-										   ds_t[1].digit, ds_t[1].decimal);
-	LCD_Action(0xC0);
-	getSapces(spaces, ds_t[2].digit);
-	LCD_Printf("1:% d.%01u%s2:% d.%01u", ds_t[2].digit, ds_t[2].decimal,
-										   spaces,
-										   ds_t[3].digit, ds_t[3].decimal);
+	if(templateDrowingMode) {
+		LCD_Action(0x01);
+		LCD_Printf("1:       2:");
+		LCD_Action(0xC0);
+		LCD_Printf("3:       4:");
+		templateDrowingMode = 0;
+	}
+	LCD_Action(0x82);
+	LCD_Printf("% d.%01u", ds_t[0].digit, ds_t[0].decimal);
+	LCD_Action(0x8B);
+	LCD_Printf("% d.%01u", ds_t[1].digit, ds_t[1].decimal);
+		
+	LCD_Action(0xC2);
+	LCD_Printf("% d.%01u", ds_t[2].digit, ds_t[2].decimal);
+	LCD_Action(0xCB);
+	LCD_Printf("% d.%01u", ds_t[3].digit, ds_t[3].decimal);
+	
+
 }
 
 void print_options(void) {
-	LCD_Action(0x01);
-	LCD_Printf("Control t C");
-	LCD_Action(0xC0);
-	LCD_Printf("Room %d", indexes.currentRoom+1);
+	if(currentRoom == 0) {
+		if(templateDrowingMode) {
+			LCD_Action(0x01);
+			LCD_Printf("Main menu");
+			LCD_Action(0xC0);
+			LCD_Printf("Control t C");
+			templateDrowingMode = 0;
+		}
+	} else {
+		if(templateDrowingMode) {
+			LCD_Action(0x01);
+			LCD_Printf("Control t C");
+			LCD_Action(0xC0);
+			LCD_Printf("Room");
+			templateDrowingMode = 0;
+		}
+		LCD_Action(0xC5);
+		LCD_Printf("%d", currentRoom);
+	}
 }
 
 void print_sensor(void) {
-	LCD_Action(0x01);
-	LCD_Printf("Room %d %d %d", indexes.currentRoom+1,counter, indexes.test);
-	LCD_Action(0xC0);
-	getSapces(spaces, rooms->min_temp);
-	if(indexes.curentOption) {
+	if(templateDrowingMode) {
+		LCD_Action(0x01);
+		LCD_Printf("Room %d", currentRoom);
+		LCD_Action(0xC0);
+		LCD_Printf("Min:     Max:");
+		templateDrowingMode = 0;
+	}
+	if(currentOption == 1) {
+		LCD_Action(0xC4);
 		if(textBlinkingFlag) {
-			LCD_Printf("Min:    %sMax:% d",	spaces,
-											rooms->max_temp);
-		} else {
-			LCD_Printf("Min:% d%sMax:% d",	rooms->min_temp,
-											spaces,
-											rooms->max_temp);
-		}
-	} else {
-		if(textBlinkingFlag) {
-			LCD_Printf("Min:% d%sMax:% d",	rooms->min_temp,
-											spaces,
-											rooms->max_temp);
+			LCD_Printf("     ");
 			} else {
-			LCD_Printf("Min:% d%sMax:     ",	rooms->min_temp,
-												spaces);
+			LCD_Printf("% d", rooms[currentRoom-1].min_temp);
+		}
+		LCD_Action(0xCD);
+		LCD_Printf("% d", rooms[currentRoom-1].max_temp);
+		} else {
+		LCD_Action(0xC4);
+		LCD_Printf("% d", rooms[currentRoom-1].min_temp);
+		LCD_Action(0xCD);
+		if(textBlinkingFlag) {
+			LCD_Printf("     ");
+			} else {
+			LCD_Printf("% d", rooms[currentRoom-1].max_temp);
 		}
 	}
-	
 }
 
 void getSapces(char *str, int8_t tmp) {
@@ -221,13 +373,3 @@ void getSapces(char *str, int8_t tmp) {
 	}
 }
 
-
-
-/*ISR(ADC_vect) {
-	ADC_values[ADC_input_index] = ADC;
-	if( ++ADC_input_index >= ADC_COUNT ) {
-		ADC_input_index = 0;
-	}
-	ADMUX = (1 << REFS0) | ADC_input_index;
-	ADC_StartConversion();
-}*/

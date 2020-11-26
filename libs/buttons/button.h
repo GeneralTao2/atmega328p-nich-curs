@@ -20,6 +20,7 @@ typedef struct Button_TypeDef {
 	uint8_t PORTxx;
 	uint8_t PCIEx;
 	volatile uint8_t pressed;
+	void (*onClick)();
 } Button_TypeDef;
 
 void Button_init(Button_TypeDef *configs);

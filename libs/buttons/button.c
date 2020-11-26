@@ -15,6 +15,9 @@ void Button_init(Button_TypeDef *configs) {
 void Button_press(Button_TypeDef *configs) {
 	if(ButtonsEnablingState) {
 		configs->pressed = 1;
+		if(configs->onClick) {
+			configs->onClick();
+		}
 	}
 }
 

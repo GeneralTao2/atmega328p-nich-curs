@@ -6,7 +6,7 @@
  */ 
 
 #include "interrupts.h"
-
+extern uint8_t counter1;
 ISR(TIMER2_COMPA_vect) {
 	if(textBlinkingCounter >= TEXT_BLINKING_COUNT) {
 		textBlinkingFlag = !textBlinkingFlag;
@@ -17,7 +17,6 @@ ISR(TIMER2_COMPA_vect) {
 	if(LCDPrintingCounter >= LCD_PRINTING_COUNT) {
 		LCDPrintingFlag = !LCDPrintingFlag;
 		LCDPrintingCounter = 0;
-		LedToggle(&led1);
 	}
 	LCDPrintingCounter++;
 }
@@ -34,31 +33,38 @@ ISR(PCINT0_vect) {
 		return;
 	}
 	
-	if(PINB & SH(buttonLeft.PORTxx) ) {
+	if(~PINB & SH(buttonMenu.PORTxx) ) {
+		Button_press(&buttonMenu);
+		return;
+		} else {
+		Button_unPress(&buttonMenu);
+	}
+	
+	if(~PINB & SH(buttonLeft.PORTxx) ) {
 		Button_press(&buttonLeft);
 		return;
 	} else {
 		Button_unPress(&buttonLeft);
 	}
 	
-	if(PINB & SH(buttonLeft.PORTxx) ) {
-		Button_press(&buttonLeft);
+	if(~PINB & SH(buttonRight.PORTxx) ) {
+		Button_press(&buttonRight);
 		return;
 	} else {
-		Button_unPress(&buttonLeft);
+		Button_unPress(&buttonRight);
 	}
 	
-	if(PINB & SH(buttonLeft.PORTxx) ) {
-		Button_press(&buttonLeft);
+	if(~PINB & SH(buttonUp.PORTxx) ) {
+		Button_press(&buttonUp);
 		return;
 	} else {
-		Button_unPress(&buttonLeft);
+		Button_unPress(&buttonUp);
 	}
 	
-	if(PINB & SH(buttonLeft.PORTxx) ) {
-		Button_press(&buttonLeft);
+	if(~PINB & SH(buttonDown.PORTxx) ) {
+		Button_press(&buttonDown);
 		return;
 	} else {
-		Button_unPress(&buttonLeft);
+		Button_unPress(&buttonDown);
 	}
 }

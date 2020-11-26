@@ -20,6 +20,7 @@ typedef struct Led_TypeDef {
 void LedEnable(Led_TypeDef *led);
 void LedDisable(Led_TypeDef *led);
 void LedOn(Led_TypeDef *led);
+uint8_t LedIsOn(Led_TypeDef *led);
 void LedOff(Led_TypeDef *led);
 void LedToggle(Led_TypeDef *led);
 

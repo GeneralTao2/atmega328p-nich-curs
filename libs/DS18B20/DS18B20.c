@@ -89,7 +89,6 @@ Temperature DS18B20_read_temperature(DS18B20_TypeDef *ds){
 	//Read Scratchpad (only 2 first bytes)
 	temperature[0]=DS18B20_read_byte(ds);
 	temperature[1]=DS18B20_read_byte(ds);
-	temp.a = temperature[2]=DS18B20_read_byte(ds);
 	DS18B20_reset(ds);
 	//Store temperature integer digits and decimal digits
 	temp.digit=temperature[0]>>4;
@@ -97,7 +96,5 @@ Temperature DS18B20_read_temperature(DS18B20_TypeDef *ds){
 	//Store decimal digits
 	temp.decimal=temperature[0]&0xf;
 	temp.decimal*=THERM_DECIMAL_STEPS_12BIT;
-	temp.b = temperature[0];
-	temp.c = temperature[1];
 	return temp;
 }

@@ -36,9 +36,6 @@ typedef struct DS18B20_TypeDef {
 typedef struct Temperature {
 	int8_t digit;
 	uint16_t decimal;
-	uint8_t a;
-	uint8_t b;
-	uint8_t c;
 } Temperature;
 
 #define THERM_DECIMAL_STEPS_12BIT 625 //.0625

@@ -14,6 +14,10 @@ void LedDisable(Led_TypeDef *led) {
 	CB(*led->DDRx, led->PORTxx);
 }
 
+uint8_t LedIsOn(Led_TypeDef *led) {
+	return *led->PORTx & SH(led->PORTxx);
+}
+
 void LedOn(Led_TypeDef *led) {
 	SB(*led->PORTx, led->PORTxx);
 }
